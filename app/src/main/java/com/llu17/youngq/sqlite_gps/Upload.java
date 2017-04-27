@@ -16,11 +16,11 @@ import static com.llu17.youngq.sqlite_gps.CollectorService.mDb;
  */
 
 public class Upload extends TimerTask {
-    int count = 0;
-    double[] nums1,nums2,nums3,nums4;
-    int[] nums5;
-    int step = 0;
-    int tag = 0;
+    private int count = 0;
+    private double[] nums1,nums2,nums3,nums4;
+    private int[] nums5;
+    private int step = 0;
+    private int tag = 0;
 
     public Upload(double[] array1, double[] array2, double[] array3, double[] array4, int[] array5){
         nums1 = array1;

@@ -605,6 +605,14 @@ public class UploadService extends Service{
                             e.printStackTrace();
                         }
                         Log.e("lalala", "-------");
+                        Log.e("result[0]","!!!!!"+result[0]);
+                        Log.e("result[1]","!!!!!"+result[1]);
+                        Log.e("result[2]","!!!!!"+result[2]);
+                        Log.e("result[3]","!!!!!"+result[3]);
+                        Log.e("result[4]","!!!!!"+result[4]);
+                        Log.e("result[5]","!!!!!"+result[5]);
+                        Log.e("result[6]","!!!!!"+result[6]);
+
                     }
                     int sum = 0;
                     for(int i : result)
@@ -660,6 +668,11 @@ public class UploadService extends Service{
                     }
                     result[0] = 0;
                     result[1] = 0;
+                    result[2] = 0;
+                    result[3] = 0;
+                    result[4] = 0;
+                    result[5] = 0;
+                    result[6] = 0;
                     if(gpses == null && acces == null){
                         label = false;
                     }
