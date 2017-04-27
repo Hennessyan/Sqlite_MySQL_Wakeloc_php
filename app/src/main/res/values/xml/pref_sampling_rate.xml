@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+    <ListPreference
+        android:key="@string/sr_key_accelerometer"
+        android:title="Accelerometer"
+        android:defaultValue="1000"
+        android:entries="@array/sampling_rate_names_array"
+        android:entryValues="@array/sampling_rate_values_array"
+        android:summary="Select the sampling rate"
+        android:enabled="true"
+        android:shouldDisableView="false"
+        android:icon="@drawable/blue"
+        android:dialogIcon="@drawable/purple"
+        />
+    <ListPreference
+        android:key="@string/sr_key_gyroscope"
+        android:title="Gyroscope"
+        android:entries="@array/sampling_rate_names_array"
+        android:entryValues="@array/sampling_rate_values_array"
+        android:defaultValue="1000"
+        android:enabled="true"
+        android:shouldDisableView="false"
+        android:icon="@drawable/green"
+        android:dialogIcon="@drawable/purple"
+        android:summary="Select the sampling rate"
+        />
+    <ListPreference
+        android:key="@string/sr_key_gps"
+        android:title="Gps"
+        android:entries="@array/sampling_rate_names_array"
+        android:entryValues="@array/sampling_rate_values_array"
+        android:defaultValue="1000"
+        android:enabled="true"
+        android:shouldDisableView="false"
+        android:icon="@drawable/pink"
+        android:dialogIcon="@drawable/purple"
+        android:summary="Select the sampling rate"
+        />
+    <ListPreference
+        android:key="@string/sr_key_step"
+        android:title="Step"
+        android:entries="@array/sampling_rate_names_array"
+        android:entryValues="@array/sampling_rate_values_array"
+        android:defaultValue="1000"
+        android:enabled="true"
+        android:shouldDisableView="false"
+        android:icon="@drawable/yellow"
+        android:dialogIcon="@drawable/purple"
+        android:summary="Select the sampling rate"
+        />
+</PreferenceScreen>

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+    <ListPreference
+        android:key="@string/sr_key_all"
+        android:title="All Sampling Rate"
+        android:defaultValue="1000"
+        android:entries="@array/sampling_rate_names_array"
+        android:entryValues="@array/sampling_rate_values_array"
+        android:summary="Select the sampling rate"
+        android:enabled="true"
+        android:shouldDisableView="false"
+        android:icon="@drawable/blue"
+        android:dialogIcon="@drawable/purple"
+        />
+
+</PreferenceScreen>

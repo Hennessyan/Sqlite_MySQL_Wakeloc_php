@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="sampling_rate_names_array">
+        <item>Slow</item>
+        <!--item>slow = 5000 : 1 sample / 5 seconds</item-->
+
+        <item>Normal</item>
+        <!--item>normal = 1000 : 1 sample / 1 second</item-->
+
+        <item>Fast</item>
+        <!--item>fast = 200 : 5 samples / 1 second</item-->
+
+    </string-array>
+
+    <!-- foreground color values array -->
+    <string-array name="sampling_rate_values_array">
+        <!--item>Slow</item-->
+        <item>5000</item>
+
+        <!--item>Normal</item-->
+        <item>1000</item>
+
+        <!--item>Fast</item-->
+        <item>200</item>
+
+    </string-array>
+</resources>
