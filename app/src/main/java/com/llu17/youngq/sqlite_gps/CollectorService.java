@@ -56,28 +56,6 @@ public class CollectorService extends Service implements SensorEventListener {
             Log.e("===location===","changed!");
             gps_location[0] = location.getLongitude();
             gps_location[1] = location.getLatitude();
-
-//            long temp_time = System.currentTimeMillis();
-//            ContentValues cv = new ContentValues();
-//            cv.put(GpsContract.GpsEntry.COLUMN_ID,id);
-//            cv.put(GpsContract.GpsEntry.COLUMN_TIMESTAMP,temp_time);
-//            cv.put(GpsContract.GpsEntry.COLUMN_LATITUDE, latitude);
-//            cv.put(GpsContract.GpsEntry.COLUMN_LONGITUDE, longitude);
-//
-//            try
-//            {
-//                mDb.beginTransaction();
-//                mDb.insert(GpsContract.GpsEntry.TABLE_NAME, null, cv);
-//                mDb.setTransactionSuccessful();
-//                Log.e("===insert===","success!");
-//            }
-//            catch (SQLException e) {
-//                //too bad :(
-//            }
-//            finally
-//            {
-//                mDb.endTransaction();
-//            }
         }
 
         @Override
@@ -131,12 +109,19 @@ public class CollectorService extends Service implements SensorEventListener {
     private int[] wifistate = new int[1];
     private BroadcastReceiver mConnReceiver = new BroadcastReceiver() {
         public void onReceive(Context context, Intent intent) {
-            NetworkInfo currentNetworkInfo = intent.getParcelableExtra(ConnectivityManager.EXTRA_NETWORK_INFO);
+            ConnectivityManager connectivityManager = (ConnectivityManager)getSystemService(Context.CONNECTIVITY_SERVICE);
 
-            if(currentNetworkInfo.isConnected()){
-                wifistate[0] = 1;
-                Log.e("WiFi is Connected","!!!!!"+wifistate[0]);
-            }else{
+            NetworkInfo wifiNetworkInfo = connectivityManager.getActiveNetworkInfo();
+            if(wifiNetworkInfo != null) {
+                if (wifiNetworkInfo.getType() == ConnectivityManager.TYPE_WIFI) {
+                    wifistate[0] = 1;
+                    Log.e("WiFi is Connected","!!!!!"+wifistate[0]);
+                } else {
+                    wifistate[0] = 0;
+                    Log.e("WiFi is not Connected","!!!!!"+wifistate[0]);
+                }
+            }
+            else{
                 wifistate[0] = 0;
                 Log.e("WiFi is not Connected","!!!!!"+wifistate[0]);
             }
@@ -248,24 +233,10 @@ public class CollectorService extends Service implements SensorEventListener {
             acce[1] = event.values[1];
             acce[2] = event.values[2];
         } else if (event.sensor.getType() == Sensor.TYPE_GYROSCOPE) {
-//            if (timestamp != 0) {
-//                // 得到两次检测到手机旋转的时间差（纳秒），并将其转化为秒
-//                final float dT = (event.timestamp - timestamp) * NS2S;
-//                // 将手机在各个轴上的旋转角度相加，即可得到当前位置相对于初始位置的旋转弧度
-//                angle[0] += event.values[0] * dT;
-//                angle[1] += event.values[1] * dT;
-//                angle[2] += event.values[2] * dT;
-//                // 将弧度转化为角度
-//                gyro[0] = (float) Math.toDegrees(angle[0]);
-//                gyro[1] = (float) Math.toDegrees(angle[1]);
-//                gyro[2] = (float) Math.toDegrees(angle[2]);
-//            }
-//            timestamp = event.timestamp;
             gyro[0] = event.values[0];
             gyro[1] = event.values[1];
             gyro[2] = event.values[2];
         }
-//        Log.d("hi","debug");
     }
     @Override
     public void onAccuracyChanged(Sensor sensor, int accuracy) {

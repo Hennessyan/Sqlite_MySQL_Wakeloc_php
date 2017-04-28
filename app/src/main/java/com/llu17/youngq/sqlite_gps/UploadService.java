@@ -8,10 +8,13 @@ import android.content.IntentFilter;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.net.ConnectivityManager;
+import android.net.Network;
 import android.net.NetworkInfo;
+import android.os.Build;
 import android.os.IBinder;
 import android.os.PowerManager;
 import android.support.annotation.Nullable;
+import android.support.annotation.RequiresApi;
 import android.util.Log;
 
 import com.llu17.youngq.sqlite_gps.data.GpsContract;
@@ -37,6 +40,8 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -45,7 +50,8 @@ import java.util.concurrent.CountDownLatch;
 import static android.app.job.JobInfo.getMinPeriodMillis;
 import static com.llu17.youngq.sqlite_gps.Util.session;
 
-
+import java.net.HttpURLConnection;
+import java.net.URL;
 /**
  * Created by youngq on 17/3/28.
  */
@@ -74,6 +80,8 @@ public class UploadService extends Service{
     ArrayList<STEP> steps;
     ArrayList<BATTERY> batteries;
     ArrayList<WIFI> wifis;
+
+    private boolean wifi_exist = false;
 
     private JSONObject acce_object,gyro_object,gps_object,motion_object,step_object,battery_object,wifi_object;
     private JSONArray AcceJsonArray,GyroJsonArray,GpsJsonArray,MotionJsonArray,StepJsonArray,BatteryJsonArray,WiFiJsonArray;
@@ -108,8 +116,176 @@ public class UploadService extends Service{
     public int onStartCommand(Intent intent, int flags, int startId) {
 
         acquireWakeLock();
-        registerReceiver(this.mConnReceiver,
-                new IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION));
+//        registerReceiver(this.mConnReceiver,
+//                new IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION));
+        ConnectivityManager connectivityManager = (ConnectivityManager)this.getSystemService(Context.CONNECTIVITY_SERVICE);
+
+        NetworkInfo wifiNetworkInfo = connectivityManager.getActiveNetworkInfo();
+        if(wifiNetworkInfo != null) {
+            if (wifiNetworkInfo.getType() == ConnectivityManager.TYPE_WIFI) {
+                wifi_exist = true;
+                Log.e("wifi", "on");
+
+            } else {
+                wifi_exist = false;
+                Log.e("wifi", "off");
+            }
+        }
+        else{
+            wifi_exist = false;
+            Log.e("wifi", "off111");
+        }
+        if(wifi_exist){
+            boolean label = true;
+
+            while(label){
+
+                gpses = find_all_gps();
+                acces = find_all_acce();
+                gyros = find_all_gyro();
+                motions = find_all_motion();
+                steps = find_all_step();
+                batteries = find_all_battery();
+                wifis = find_all_wifi();
+
+                if(gpses != null) {
+                    latch = new CountDownLatch(7);
+                    Thread t1 = new Thread() {
+                        public void run() {
+                            result[0] = post_data(gps_url, changeGpsDateToJson());
+                            latch.countDown();
+                        }
+                    };
+                    t1.start();
+                    Thread t2 = new Thread() {
+                        public void run() {
+                            result[1] = post_data(acce_url, changeAcceDateToJson());
+                            latch.countDown();
+                        }
+                    };
+                    t2.start();
+                    Thread t3 = new Thread() {
+                        public void run() {
+                            result[2] = post_data(gyro_url, changeGyroDateToJson());
+                            latch.countDown();
+                        }
+                    };
+                    t3.start();
+                    Thread t4 = new Thread() {
+                        public void run() {
+                            result[3] = post_data(step_url, changeStepDateToJson());
+                            latch.countDown();
+                        }
+                    };
+                    t4.start();
+                    Thread t5 = new Thread() {
+                        public void run() {
+                            result[4] = post_data(motion_url, changeMotionDateToJson());
+                            latch.countDown();
+                        }
+                    };
+                    t5.start();
+                    Thread t6 = new Thread() {
+                        public void run() {
+                            result[5] = post_data(wifi_url, changeWiFiDateToJson());
+                            latch.countDown();
+                        }
+                    };
+                    t6.start();
+                    Thread t7 = new Thread() {
+                        public void run() {
+                            result[6] = post_data(battery_url, changeBatteryDateToJson());
+                            latch.countDown();
+                        }
+                    };
+                    t7.start();
+
+                    try {
+                        latch.await();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    Log.e("lalala", "-------");
+                    Log.e("result[0]","!!!!!"+result[0]);
+                    Log.e("result[1]","!!!!!"+result[1]);
+                    Log.e("result[2]","!!!!!"+result[2]);
+                    Log.e("result[3]","!!!!!"+result[3]);
+                    Log.e("result[4]","!!!!!"+result[4]);
+                    Log.e("result[5]","!!!!!"+result[5]);
+                    Log.e("result[6]","!!!!!"+result[6]);
+
+                }
+                int sum = 0;
+                for(int i : result)
+                    sum += i;
+                if (sum == 1400 ) {         //7*200 = 1400
+                    latch = new CountDownLatch(1);
+                    Thread t1 = new Thread() {
+                        public void run() {
+                            long first_gps = gpses.get(0).getTimestamp();
+                            long last_gps = gpses.get(gpses.size() - 1).getTimestamp();
+
+                            long first_acce = acces.get(0).getTimestamp();
+                            long last_acce = acces.get(acces.size() - 1).getTimestamp();
+
+                            db1 = dbHelper.getWritableDatabase();
+                            try {
+                                if (db1 != null) {
+                                    Log.e("first_gps: ", "" + first_gps);
+                                    Log.e("last_gps: ", "" + last_gps);
+                                    db1.execSQL("update gps_location set Tag = 1 where timestamp between ? and ?", new Object[]{first_gps, last_gps});
+
+                                    Log.e("first_acce: ", "" + first_acce);
+                                    Log.e("last_acce: ", "" + last_acce);
+                                    db1.execSQL("update accelerometer set Tag = 1 where timestamp between ? and ?", new Object[]{first_acce, last_acce});
+                                    db1.execSQL("update gyroscope set Tag = 1 where timestamp between ? and ?", new Object[]{gyros.get(0).getTimestamp(), gyros.get(gyros.size() - 1).getTimestamp()});
+                                    db1.execSQL("update step set Tag = 1 where timestamp between ? and ?", new Object[]{steps.get(0).getTimestamp(), steps.get(steps.size() - 1).getTimestamp()});
+                                    db1.execSQL("update motionstate set Tag = 1 where timestamp between ? and ?", new Object[]{motions.get(0).getTimestamp(), motions.get(motions.size() - 1).getTimestamp()});
+                                    db1.execSQL("update wifi set Tag = 1 where timestamp between ? and ?", new Object[]{wifis.get(0).getTimestamp(), wifis.get(wifis.size() - 1).getTimestamp()});
+                                    db1.execSQL("update battery set Tag = 1 where timestamp between ? and ?", new Object[]{batteries.get(0).getTimestamp(), batteries.get(batteries.size() - 1).getTimestamp()});
+
+                                } else {
+                                    Log.e("db1~~~~~~", "null");
+                                }
+                            }
+                            catch(Exception e){
+                                Log.e("here~~~~~~~~~~~~~~", "stop upload");
+                                Log.e("exception: ", e.getMessage());
+                            }
+                            finally {
+                                db1.close();
+                            }
+                            latch.countDown();
+                        }
+                    };
+                    t1.start();
+                    try {
+                        latch.await();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    Log.e("lalala", "********");
+
+                }
+                result[0] = 0;
+                result[1] = 0;
+                result[2] = 0;
+                result[3] = 0;
+                result[4] = 0;
+                result[5] = 0;
+                result[6] = 0;
+                if(gpses == null && acces == null){
+                    label = false;
+                }
+            }
+            Log.e("lalala","~~~~~~~");
+            Log.e("upload ", "end!");
+        }
+        else{
+            Log.e("no wifi","can't upload");
+            onDestroy();
+            return START_NOT_STICKY;
+        }
         return START_STICKY;
     }
 
@@ -118,7 +294,7 @@ public class UploadService extends Service{
     public void onDestroy() {
         super.onDestroy();
         releaseWakeLock();
-        unregisterReceiver(mConnReceiver);
+//        unregisterReceiver(mConnReceiver);
         Log.e("service","destroy");
     }
 
@@ -470,33 +646,102 @@ public class UploadService extends Service{
     }
 
     private int post_data(String url, JSONArray json){
-        int StatusCode = 0;
-        HttpClient httpClient = new DefaultHttpClient();
-        HttpContext httpContext = new BasicHttpContext();
-        HttpPost httpPost = new HttpPost(url);
-
         try {
 
-            StringEntity se = new StringEntity(json.toString());
 
-            httpPost.setEntity(se);
-            httpPost.setHeader("Accept", "application/json");
-            httpPost.setHeader("Content-type", "application/json");
+            // 创建url资源
+            URL url1 = new URL(url);
+            // 建立http连接
+            HttpURLConnection conn = (HttpURLConnection) url1.openConnection();
+            // 设置允许输出
+            conn.setDoOutput(true);
+            conn.setDoInput(true);
+            // 设置不用缓存
+            conn.setUseCaches(false);
+            // 设置传递方式
+            conn.setRequestMethod("POST");
+            // 设置维持长连接
+            conn.setRequestProperty("Connection", "Keep-Alive");
+            // 设置文件字符集:
+            conn.setRequestProperty("Charset", "UTF-8");
 
+            // 设置文件类型:
+            conn.setRequestProperty("contentType", "application/json");
 
-            HttpResponse response = httpClient.execute(httpPost, httpContext); //execute your request and parse response
-            HttpEntity entity = response.getEntity();
+            // 开始连接请求
+            conn.connect();
+            OutputStream out = conn.getOutputStream();
+            // 写入请求的字符串
+            out.write((json.toString()).getBytes());
+            out.flush();
+            out.close();
 
-            String jsonString = EntityUtils.toString(entity); //if response in JSON format
-            Log.e("response: ",jsonString);
+            Log.e("HEHEHE","" + conn.getResponseCode());
 
-            StatusCode = response.getStatusLine().getStatusCode();
-            Log.e("status code: ", "" + StatusCode);
+            // 请求返回的状态
+            if (conn.getResponseCode() == 200) {
+                Log.e("连接成功","~~~~~");
+                // 请求返回的数据
+                InputStream in = conn.getInputStream();
+                String a = null;
+                try {
+                    byte[] data1 = new byte[in.available()];
+                    in.read(data1);
+                    // 转成字符串
+                    a = new String(data1);
+                    Log.e("连接成功",a);
+                } catch (Exception e1) {
+                    // TODO Auto-generated catch block
+                    e1.printStackTrace();
+                }
+                return 200;
+            } else {
+                Log.e("连接失败","~~~~~");
+                return 0;
+            }
+
         } catch (Exception e) {
-            e.printStackTrace();
+
         }
-        return StatusCode;
+        finally {
+            try {
+                conn.close();
+            }
+            catch(SQLException e){
+                e.getMessage();
+            }
+        }
+        return 0;
     }
+
+//    private int post_data(String url, JSONArray json){
+//        int StatusCode = 0;
+//        HttpClient httpClient = new DefaultHttpClient();
+//        HttpContext httpContext = new BasicHttpContext();
+//        HttpPost httpPost = new HttpPost(url);
+//
+//        try {
+//
+//            StringEntity se = new StringEntity(json.toString());
+//
+//            httpPost.setEntity(se);
+//            httpPost.setHeader("Accept", "application/json");
+//            httpPost.setHeader("Content-type", "application/json");
+//
+//
+//            HttpResponse response = httpClient.execute(httpPost, httpContext); //execute your request and parse response
+//            HttpEntity entity = response.getEntity();
+//
+//            String jsonString = EntityUtils.toString(entity); //if response in JSON format
+//            Log.e("response: ",jsonString);
+//
+//            StatusCode = response.getStatusLine().getStatusCode();
+//            Log.e("status code: ", "" + StatusCode);
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//        }
+//        return StatusCode;
+//    }
 
     //获取电源锁，保持该服务在屏幕熄灭时仍然获取CPU时，保持运行
     private void acquireWakeLock()
@@ -529,323 +774,19 @@ public class UploadService extends Service{
     private int[] result = new int[7];
     private BroadcastReceiver mConnReceiver = new BroadcastReceiver() {
         public void onReceive(Context context, Intent intent) {
-            NetworkInfo currentNetworkInfo = intent.getParcelableExtra(ConnectivityManager.EXTRA_NETWORK_INFO);
+        ConnectivityManager connectivityManager = (ConnectivityManager)getSystemService(Context.CONNECTIVITY_SERVICE);
 
-            if(currentNetworkInfo.isConnected()){
-                wifistate[0] = 1;
-                Log.e("WiFi is Connected","!!!!!"+wifistate[0]);
-
-                boolean label = true;
-
-                while(label){
-
-                    gpses = find_all_gps();
-                    acces = find_all_acce();
-                    gyros = find_all_gyro();
-                    motions = find_all_motion();
-                    steps = find_all_step();
-                    batteries = find_all_battery();
-                    wifis = find_all_wifi();
-
-                    if(gpses != null) {
-                        latch = new CountDownLatch(7);
-                        Thread t1 = new Thread() {
-                            public void run() {
-                                result[0] = post_data(gps_url, changeGpsDateToJson());
-                                latch.countDown();
-                            }
-                        };
-                        t1.start();
-                        Thread t2 = new Thread() {
-                            public void run() {
-                                result[1] = post_data(acce_url, changeAcceDateToJson());
-                                latch.countDown();
-                            }
-                        };
-                        t2.start();
-                        Thread t3 = new Thread() {
-                            public void run() {
-                                result[2] = post_data(gyro_url, changeGyroDateToJson());
-                                latch.countDown();
-                            }
-                        };
-                        t3.start();
-                        Thread t4 = new Thread() {
-                            public void run() {
-                                result[3] = post_data(step_url, changeStepDateToJson());
-                                latch.countDown();
-                            }
-                        };
-                        t4.start();
-                        Thread t5 = new Thread() {
-                            public void run() {
-                                result[4] = post_data(motion_url, changeMotionDateToJson());
-                                latch.countDown();
-                            }
-                        };
-                        t5.start();
-                        Thread t6 = new Thread() {
-                            public void run() {
-                                result[5] = post_data(wifi_url, changeWiFiDateToJson());
-                                latch.countDown();
-                            }
-                        };
-                        t6.start();
-                        Thread t7 = new Thread() {
-                            public void run() {
-                                result[6] = post_data(battery_url, changeBatteryDateToJson());
-                                latch.countDown();
-                            }
-                        };
-                        t7.start();
-
-                        try {
-                            latch.await();
-                        } catch (InterruptedException e) {
-                            e.printStackTrace();
-                        }
-                        Log.e("lalala", "-------");
-                        Log.e("result[0]","!!!!!"+result[0]);
-                        Log.e("result[1]","!!!!!"+result[1]);
-                        Log.e("result[2]","!!!!!"+result[2]);
-                        Log.e("result[3]","!!!!!"+result[3]);
-                        Log.e("result[4]","!!!!!"+result[4]);
-                        Log.e("result[5]","!!!!!"+result[5]);
-                        Log.e("result[6]","!!!!!"+result[6]);
-
-                    }
-                    int sum = 0;
-                    for(int i : result)
-                        sum += i;
-                    if (sum == 1400 ) {         //7*200 = 1400
-                        latch = new CountDownLatch(1);
-                        Thread t1 = new Thread() {
-                            public void run() {
-                                long first_gps = gpses.get(0).getTimestamp();
-                                long last_gps = gpses.get(gpses.size() - 1).getTimestamp();
-
-                                long first_acce = acces.get(0).getTimestamp();
-                                long last_acce = acces.get(acces.size() - 1).getTimestamp();
-
-                                db1 = dbHelper.getWritableDatabase();
-                                try {
-                                    if (db1 != null) {
-                                        Log.e("first_gps: ", "" + first_gps);
-                                        Log.e("last_gps: ", "" + last_gps);
-                                        db1.execSQL("update gps_location set Tag = 1 where timestamp between ? and ?", new Object[]{first_gps, last_gps});
-
-                                        Log.e("first_acce: ", "" + first_acce);
-                                        Log.e("last_acce: ", "" + last_acce);
-                                        db1.execSQL("update accelerometer set Tag = 1 where timestamp between ? and ?", new Object[]{first_acce, last_acce});
-
-                                        db1.execSQL("update gyroscope set Tag = 1 where timestamp between ? and ?", new Object[]{gyros.get(0).getTimestamp(), gyros.get(gyros.size() - 1).getTimestamp()});
-                                        db1.execSQL("update step set Tag = 1 where timestamp between ? and ?", new Object[]{steps.get(0).getTimestamp(), steps.get(steps.size() - 1).getTimestamp()});
-                                        db1.execSQL("update motionstate set Tag = 1 where timestamp between ? and ?", new Object[]{motions.get(0).getTimestamp(), motions.get(motions.size() - 1).getTimestamp()});
-                                        db1.execSQL("update wifi set Tag = 1 where timestamp between ? and ?", new Object[]{wifis.get(0).getTimestamp(), wifis.get(wifis.size() - 1).getTimestamp()});
-                                        db1.execSQL("update battery set Tag = 1 where timestamp between ? and ?", new Object[]{batteries.get(0).getTimestamp(), batteries.get(batteries.size() - 1).getTimestamp()});
-
-                                    } else {
-                                        Log.e("db1~~~~~~", "null");
-                                    }
-                                }
-                                catch(Exception e){
-                                    Log.e("exception: ", e.getMessage());
-                                }
-                                finally {
-                                    db1.close();
-                                }
-                                latch.countDown();
-                            }
-                        };
-                        t1.start();
-                        try {
-                            latch.await();
-                        } catch (InterruptedException e) {
-                            e.printStackTrace();
-                        }
-                        Log.e("lalala", "********");
-
-                    }
-                    result[0] = 0;
-                    result[1] = 0;
-                    result[2] = 0;
-                    result[3] = 0;
-                    result[4] = 0;
-                    result[5] = 0;
-                    result[6] = 0;
-                    if(gpses == null && acces == null){
-                        label = false;
-                    }
-                }
-                Log.e("lalala","~~~~~~~");
-
-                /*
-                if(gpses != null) {
-                    Thread t1 = new Thread() {
-                        public void run() {
-                            result[0] = post_data(gps_url, changeGpsDateToJson());
-//                            if (result[0] == 200) {
-//                                long first_timestamp = gpses.get(0).getTimestamp();
-//                                long last_timestamp = gpses.get(gpses.size() - 1).getTimestamp();
-//                                db1 = dbHelper.getWritableDatabase();
-//                                if (db1 != null) {
-//                                    Log.e("first timestamp: ", ""+first_timestamp);
-//                                    Log.e("last timestamp: ", ""+last_timestamp);
-//                                    db1.execSQL("update gps_location set Tag = 1 where timestamp between ? and ?", new Object[]{first_timestamp, last_timestamp});
-//                                    db1.close();
-//                                } else {
-//                                    Log.e("db1~~~~~~", "null");
-//                                }
-//                            }
-//                            result[0] = 0;
-                            latch.countDown();
-                        }
-                    };
-                    t1.start();
-                }
-                if(acces != null) {
-                    Thread t2 = new Thread() {
-                        public void run() {
-                            result[1] = post_data(acce_url, changeAcceDateToJson());
-//                            if (result[1] == 200) {
-//                                long first_timestamp = acces.get(0).getTimestamp();
-//                                long last_timestamp = acces.get(acces.size() - 1).getTimestamp();
-//                                db2 = dbHelper.getWritableDatabase();
-//                                if (db2 != null) {
-//                                    Log.e("first timestamp: ", ""+first_timestamp);
-//                                    Log.e("last timestamp: ", ""+last_timestamp);
-//                                    db2.execSQL("update accelerometer set Tag = 1 where timestamp between ? and ?", new Object[]{first_timestamp, last_timestamp});
-//                                    db2.close();
-//                                } else {
-//                                    Log.e("db2~~~~~~", "null");
-//                                }
-//                            }
-//                            result[1] = 0;
-                            latch.countDown();
-                        }
-                    };
-                    t2.start();
-                }
-                */
-                /*
-                if(gyros != null) {
-                    Thread t3 = new Thread() {
-                        public void run() {
-                            result[2] = post_data(gyro_url, changeGyroDateToJson());
-                            if (result[2] == 200) {
-                                long first_timestamp = gyros.get(0).getTimestamp();
-                                long last_timestamp = gyros.get(gyros.size() - 1).getTimestamp();
-                                db3 = dbHelper.getWritableDatabase();
-                                if (db3 != null) {
-                                    Log.e("first timestamp: ", ""+first_timestamp);
-                                    Log.e("last timestamp: ", ""+last_timestamp);
-                                    db3.execSQL("update gyroscope set Tag = 1 where timestamp between ? and ?", new Object[]{first_timestamp, last_timestamp});
-                                    db3.close();
-                                } else {
-                                    Log.e("db3~~~~~~", "null");
-                                }
-                            }
-                            result[2] = 0;
-                            latch.countDown();
-                        }
-                    };
-                    t3.start();
-                }
-                if(steps != null) {
-                    Thread t4 = new Thread() {
-                        public void run() {
-                            result[3] = post_data(step_url, changeStepDateToJson());
-                            if (result[3] == 200) {
-                                long first_timestamp = steps.get(0).getTimestamp();
-                                long last_timestamp = steps.get(steps.size() - 1).getTimestamp();
-                                db4 = dbHelper.getWritableDatabase();
-                                if (db4 != null) {
-                                    Log.e("first timestamp: ", ""+first_timestamp);
-                                    Log.e("last timestamp: ", ""+last_timestamp);
-                                    db4.execSQL("update step set Tag = 1 where timestamp between ? and ?", new Object[]{first_timestamp, last_timestamp});
-                                    db4.close();
-                                } else {
-                                    Log.e("db4~~~~~~", "null");
-                                }
-                            }
-                            result[3] = 0;
-                        }
-                    };
-                    t4.start();
-                }
-                if(motions != null) {
-                    Thread t5 = new Thread() {
-                        public void run() {
-                            result[4] = post_data(motion_url, changeMotionDateToJson());
-                            if (result[4] == 200) {
-                                long first_timestamp = motions.get(0).getTimestamp();
-                                long last_timestamp = motions.get(motions.size() - 1).getTimestamp();
-                                db5 = dbHelper.getWritableDatabase();
-                                if (db5 != null) {
-                                    Log.e("first timestamp: ", ""+first_timestamp);
-                                    Log.e("last timestamp: ", ""+last_timestamp);
-                                    db5.execSQL("update motionstate set Tag = 1 where timestamp between ? and ?", new Object[]{first_timestamp, last_timestamp});
-                                    db5.close();
-                                } else {
-                                    Log.e("db5~~~~~~", "null");
-                                }
-                            }
-                            result[4] = 0;
-                        }
-                    };
-                    t5.start();
-                }
-                if(wifis != null) {
-                    Thread t6 = new Thread() {
-                        public void run() {
-                            result[5] = post_data(wifi_url, changeWiFiDateToJson());
-                            if (result[5] == 200) {
-                                long first_timestamp = wifis.get(0).getTimestamp();
-                                long last_timestamp = wifis.get(wifis.size() - 1).getTimestamp();
-                                db6 = dbHelper.getWritableDatabase();
-                                if (db6 != null) {
-                                    Log.e("first timestamp: ", ""+first_timestamp);
-                                    Log.e("last timestamp: ", ""+last_timestamp);
-                                    db6.execSQL("update wifi set Tag = 1 where timestamp between ? and ?", new Object[]{first_timestamp, last_timestamp});
-                                    db6.close();
-                                } else {
-                                    Log.e("db6~~~~~~", "null");
-                                }
-                            }
-                            result[5] = 0;
-                        }
-                    };
-                    t6.start();
-                }
-                if(batteries != null) {
-                    Thread t7 = new Thread() {
-                        public void run() {
-                            result[6] = post_data(battery_url, changeBatteryDateToJson());
-                            if (result[6] == 200) {
-                                long first_timestamp = batteries.get(0).getTimestamp();
-                                long last_timestamp = batteries.get(batteries.size() - 1).getTimestamp();
-                                db7 = dbHelper.getWritableDatabase();
-                                if (db7 != null) {
-                                    Log.e("first timestamp: ", ""+first_timestamp);
-                                    Log.e("last timestamp: ", ""+last_timestamp);
-                                    db7.execSQL("update battery set Tag = 1 where timestamp between ? and ?", new Object[]{first_timestamp, last_timestamp});
-                                    db7.close();
-                                } else {
-                                    Log.e("db7~~~~~~", "null");
-                                }
-                            }
-                            result[6] = 0;
-                        }
-                    };
-                    t7.start();
-                }
-                */
-
+        NetworkInfo wifiNetworkInfo = connectivityManager.getActiveNetworkInfo();
+        if(wifiNetworkInfo != null) {
+            if (wifiNetworkInfo.getType() == ConnectivityManager.TYPE_WIFI) {
+                Log.e("wifi", "on");
+            } else {
+                Log.e("wifi", "off");
             }
-            if(!currentNetworkInfo.isConnected()){
-                wifistate[0] = 0;
-                Log.e("WiFi is not Connected","!!!!!"+wifistate[0]);
-            }
+        }
+        else{
+            Log.e("wifi", "off111");
+        }
         }
     };
 

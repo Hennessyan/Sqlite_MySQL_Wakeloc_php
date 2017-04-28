@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Sqlite_MySQL_PHP</string>
+    <string name="app_name">Sqlite_MySQL_PHP2</string>
     <string name="default_id">id</string>
     <string name="default_timestamp">timestamp</string>
     <string name="default_latitude">latitude</string>
