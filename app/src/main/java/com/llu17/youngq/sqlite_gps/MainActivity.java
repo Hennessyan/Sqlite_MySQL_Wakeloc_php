@@ -13,6 +13,7 @@ import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.facebook.stetho.Stetho;
@@ -26,7 +27,7 @@ public class MainActivity extends AppCompatActivity  implements SharedPreference
 
 //    private final static String tag = "Gps_SQLite";
     private String sampling_rate;
-
+    static TextView upload_state;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -45,7 +46,8 @@ public class MainActivity extends AppCompatActivity  implements SharedPreference
                 .addNetworkInterceptor(new StethoInterceptor())
                 .build();
         //////////
-
+        upload_state = (TextView)findViewById(R.id.Upload_State);
+        upload_state.setVisibility(android.view.View.GONE);
 
         if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
 

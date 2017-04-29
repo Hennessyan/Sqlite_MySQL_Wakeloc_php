@@ -52,4 +52,13 @@
 
     </LinearLayout>
 
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="upload finished!"
+        android:textSize="30sp"
+        android:layout_marginTop="16dp"
+        android:layout_gravity="center"
+        android:id="@+id/Upload_State"/>
+
 </LinearLayout>
