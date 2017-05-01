@@ -794,7 +794,7 @@ public class UploadService extends Service{
                         wifis = find_all_wifi();
 
                         if(gpses != null) {
-                            latch = new CountDownLatch(7);
+                            latch = new CountDownLatch(5);
                             Thread t1 = new Thread() {
                                 public void run() {
                                     result[0] = post_data(gps_url, changeGpsDateToJson());
@@ -830,6 +830,22 @@ public class UploadService extends Service{
                                 }
                             };
                             t5.start();
+
+
+                            try {
+                                latch.await();
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                            }
+                            Log.e("lalala", "-------");
+                            Log.e("result[0]","!!!!!"+result[0]);
+                            Log.e("result[1]","!!!!!"+result[1]);
+                            Log.e("result[2]","!!!!!"+result[2]);
+                            Log.e("result[3]","!!!!!"+result[3]);
+                            Log.e("result[4]","!!!!!"+result[4]);
+                        }
+                        if(batteries != null){
+                            latch = new CountDownLatch(2);
                             Thread t6 = new Thread() {
                                 public void run() {
                                     result[5] = post_data(wifi_url, changeWiFiDateToJson());
@@ -844,26 +860,19 @@ public class UploadService extends Service{
                                 }
                             };
                             t7.start();
-
                             try {
                                 latch.await();
                             } catch (InterruptedException e) {
                                 e.printStackTrace();
                             }
-                            Log.e("lalala", "-------");
-                            Log.e("result[0]","!!!!!"+result[0]);
-                            Log.e("result[1]","!!!!!"+result[1]);
-                            Log.e("result[2]","!!!!!"+result[2]);
-                            Log.e("result[3]","!!!!!"+result[3]);
-                            Log.e("result[4]","!!!!!"+result[4]);
+                            Log.e("hehehe", "-------");
                             Log.e("result[5]","!!!!!"+result[5]);
                             Log.e("result[6]","!!!!!"+result[6]);
-
                         }
                         int sum = 0;
-                        for(int i : result)
-                            sum += i;
-                        if (sum == 1400 ) {         //7*200 = 1400
+                        for(int i = 0; i < 5; i++)
+                            sum += result[i];
+                        if (sum == 1000 ) {         //5*200 = 1000
                             latch = new CountDownLatch(1);
                             Thread t1 = new Thread() {
                                 public void run() {
@@ -876,16 +885,50 @@ public class UploadService extends Service{
                                     db1 = dbHelper.getWritableDatabase();
                                     try {
                                         if (db1 != null) {
-//                                    Log.e("first_gps: ", "" + first_gps);
-//                                    Log.e("last_gps: ", "" + last_gps);
                                             db1.execSQL("update gps_location set Tag = 1 where timestamp between ? and ?", new Object[]{first_gps, last_gps});
-
-//                                    Log.e("first_acce: ", "" + first_acce);
-//                                    Log.e("last_acce: ", "" + last_acce);
                                             db1.execSQL("update accelerometer set Tag = 1 where timestamp between ? and ?", new Object[]{first_acce, last_acce});
                                             db1.execSQL("update gyroscope set Tag = 1 where timestamp between ? and ?", new Object[]{gyros.get(0).getTimestamp(), gyros.get(gyros.size() - 1).getTimestamp()});
                                             db1.execSQL("update step set Tag = 1 where timestamp between ? and ?", new Object[]{steps.get(0).getTimestamp(), steps.get(steps.size() - 1).getTimestamp()});
                                             db1.execSQL("update motionstate set Tag = 1 where timestamp between ? and ?", new Object[]{motions.get(0).getTimestamp(), motions.get(motions.size() - 1).getTimestamp()});
+
+                                        } else {
+                                            Log.e("db1~~~~~~", "null");
+                                        }
+                                    } catch (Exception e) {
+                                        Log.e("here~~~~~~~~~~~~~~", "stop upload");
+                                        Log.e("exception: ", e.getMessage());
+                                    } finally {
+                                        db1.close();
+                                    }
+                                    latch.countDown();
+                                }
+                            };
+                            t1.start();
+                            try {
+                                latch.await();
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                            }
+                            Log.e("lalala", "********");
+                            result[0] = 0;
+                            result[1] = 0;
+                            result[2] = 0;
+                            result[3] = 0;
+                            result[4] = 0;
+                        }
+
+                        int sum1 = 0;
+                        for(int i = 0; i < 2; i++)
+                            sum1 += result[i + 5];
+                        if (sum1 == 400 ) {         //2*200 = 400
+                            latch = new CountDownLatch(1);
+                            Thread t2 = new Thread() {
+                                public void run() {
+
+                                    db1 = dbHelper.getWritableDatabase();
+                                    try {
+                                        if (db1 != null) {
+
                                             db1.execSQL("update wifi set Tag = 1 where timestamp between ? and ?", new Object[]{wifis.get(0).getTimestamp(), wifis.get(wifis.size() - 1).getTimestamp()});
                                             db1.execSQL("update battery set Tag = 1 where timestamp between ? and ?", new Object[]{batteries.get(0).getTimestamp(), batteries.get(batteries.size() - 1).getTimestamp()});
 
@@ -903,23 +946,17 @@ public class UploadService extends Service{
                                     latch.countDown();
                                 }
                             };
-                            t1.start();
+                            t2.start();
                             try {
                                 latch.await();
                             } catch (InterruptedException e) {
                                 e.printStackTrace();
                             }
-                            Log.e("lalala", "********");
-
+                            Log.e("hehehe", "********");
                         }
-                        result[0] = 0;
-                        result[1] = 0;
-                        result[2] = 0;
-                        result[3] = 0;
-                        result[4] = 0;
                         result[5] = 0;
                         result[6] = 0;
-                        if(gpses == null && acces == null){
+                        if(gpses == null && batteries == null){
                             label = false;
                         }
                     }

@@ -192,7 +192,7 @@ public class CollectorService extends Service implements SensorEventListener {
         timer = new Timer();
         timer.schedule(new Upload(acce, gyro, stepcount, gps_location, state), 0, sampling_rate);
         timer1 = new Timer();
-        timer1.schedule(new Upload1(batteryPercentage, wifistate), 0, 1000);   //change to 60000
+        timer1.schedule(new Upload1(batteryPercentage, wifistate), 0, 60000);   //change to 60000
         return START_STICKY;
     }
 
