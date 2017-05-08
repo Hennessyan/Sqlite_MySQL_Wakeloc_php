@@ -37,7 +37,6 @@ dependencies {
     compile 'com.facebook.stetho:stetho-okhttp3:1.4.2'
     compile 'com.google.android.gms:play-services:9.0.2'
 //  MySQL
-    compile files('libs/mysql-connector-java-5.1.6-bin.jar')
     compile files('libs/jsch-0.1.52.jar')
     testCompile 'junit:junit:4.12'
 //  http
